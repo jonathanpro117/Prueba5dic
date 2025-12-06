@@ -9,11 +9,24 @@ import java.util.jar.JarFile;
 
 public interface AuthAPI extends eu.darkbot.api.managers.AuthAPI {
 
-    Path VERIFIER_PATH = Paths.get("lib", "verifier.jar");
-    AuthAPI INSTANCE = ReflectionUtils.createInstance("eu.darkbot.verifier.AuthAPIImpl", VERIFIER_PATH);
+    Path DEFAULT_VERIFIER_PATH = Paths.get("lib", "verifier.jar");
+    AuthAPI INSTANCE = ReflectionUtils.createInstance("eu.darkbot.verifier.AuthAPIImpl", getVerifierPath());
 
     static AuthAPI getInstance() {
         return INSTANCE;
+    }
+
+    /**
+     * Returns the path to the verifier implementation.
+     * Can be overridden with the system property {@code darkbot.verifier.path}
+     * or the environment variable {@code DARKBOT_VERIFIER_PATH}.
+     */
+    static Path getVerifierPath() {
+        String override = System.getProperty("darkbot.verifier.path");
+        if (override == null || override.isBlank()) override = System.getenv("DARKBOT_VERIFIER_PATH");
+
+        if (override == null || override.isBlank()) return DEFAULT_VERIFIER_PATH;
+        return Paths.get(override);
     }
 
     /**
