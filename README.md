@@ -45,6 +45,8 @@ If you already have a `verifier.jar` in place but want to bypass it and force th
 - JVM property: `-Ddarkbot.verifier.mode=builtin`
 - Environment variable: `DARKBOT_VERIFIER_MODE=builtin`
 
+If the bundled `verifier.jar` rejects your build (for example, an unsigned or locally built JAR), DarkBOT will now fall back automatically to the built-in verifier unless you explicitly provided a custom verifier path.
+
 ### Verificador integrado (sin Discord)
 
 Si el archivo `verifier.jar` no está presente (o no defines ninguna ruta personalizada), el bot usará ahora un verificador integrado:

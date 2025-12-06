@@ -18,16 +18,33 @@ public interface AuthAPI extends eu.darkbot.api.managers.AuthAPI {
     }
 
     static AuthAPI createInstance() {
+        AuthAPI builtIn = new eu.darkbot.verifier.AuthAPIImpl();
+
         if (shouldForceBuiltIn()) {
             System.err.println("[AuthAPI] Using built-in verifier as requested via darkbot.verifier.mode=DARKBOT_VERIFIER_MODE");
-            return new eu.darkbot.verifier.AuthAPIImpl();
+            return builtIn;
         }
 
         Path verifierPath = getVerifierPath();
-        if (Files.exists(verifierPath)) return ReflectionUtils.createInstance("eu.darkbot.verifier.AuthAPIImpl", verifierPath);
+        boolean explicitPath = hasCustomVerifierPath();
 
-        System.err.println("[AuthAPI] No verifier.jar found at " + verifierPath + ", using built-in verifier implementation.");
-        return new eu.darkbot.verifier.AuthAPIImpl();
+        if (Files.exists(verifierPath)) {
+            try {
+                AuthAPI external = ReflectionUtils.createInstance("eu.darkbot.verifier.AuthAPIImpl", verifierPath);
+                return new FallbackAuthAPI(external, builtIn, verifierPath, explicitPath);
+            } catch (RuntimeException e) {
+                System.err.println("[AuthAPI] Failed to load verifier from " + verifierPath + ": " + e.getMessage());
+                if (explicitPath)
+                    throw e;
+                System.err.println("[AuthAPI] Falling back to built-in verifier implementation.");
+            }
+        } else if (explicitPath) {
+            System.err.println("[AuthAPI] Custom verifier path not found: " + verifierPath);
+        } else {
+            System.err.println("[AuthAPI] No verifier.jar found at " + verifierPath + ", using built-in verifier implementation.");
+        }
+
+        return builtIn;
     }
 
     /**
@@ -41,6 +58,15 @@ public interface AuthAPI extends eu.darkbot.api.managers.AuthAPI {
 
         if (override == null || override.isBlank()) return DEFAULT_VERIFIER_PATH;
         return Paths.get(override);
+    }
+
+    /**
+     * Returns true when the verifier path was explicitly provided via property or env var.
+     */
+    static boolean hasCustomVerifierPath() {
+        String override = System.getProperty("darkbot.verifier.path");
+        if (override == null || override.isBlank()) override = System.getenv("DARKBOT_VERIFIER_PATH");
+        return override != null && !override.isBlank();
     }
 
     /**
@@ -98,5 +124,98 @@ public interface AuthAPI extends eu.darkbot.api.managers.AuthAPI {
      * @return true if signed & known signature, null if not signed, false if signed by untrusted key.
      */
     Boolean checkPluginJarSignature(JarFile jarFile) throws IOException;
+
+    /**
+     * Decorates an AuthAPI and falls back to the built-in verifier when the external one
+     * rejects the build (for example, unsigned JARs).
+     */
+    class FallbackAuthAPI implements AuthAPI {
+
+        private final AuthAPI builtIn;
+        private final Path path;
+        private final boolean explicitPath;
+
+        private volatile AuthAPI active;
+
+        public FallbackAuthAPI(AuthAPI external, AuthAPI builtIn, Path path, boolean explicitPath) {
+            this.active = external;
+            this.builtIn = builtIn;
+            this.path = path;
+            this.explicitPath = explicitPath;
+        }
+
+        private AuthAPI fallback(Throwable reason) {
+            if (active == builtIn) return builtIn;
+
+            synchronized (this) {
+                if (active == builtIn) return builtIn;
+                System.err.println("[AuthAPI] External verifier from " + path + " rejected this build: " + reason.getMessage());
+                if (!explicitPath) System.err.println("[AuthAPI] Switching to built-in verifier.");
+                active = builtIn;
+                return active;
+            }
+        }
+
+        private <T> T withFallback(AuthSupplier<T> supplier) {
+            try {
+                return supplier.get();
+            } catch (SecurityException e) {
+                fallback(e);
+                return supplier.get();
+            }
+        }
+
+        private <T> T withFallbackIo(AuthIoSupplier<T> supplier) throws IOException {
+            try {
+                return supplier.get();
+            } catch (SecurityException e) {
+                fallback(e);
+                return supplier.get();
+            }
+        }
+
+        @Override
+        public void setupAuth() {
+            withFallback(() -> {
+                active.setupAuth();
+                return null;
+            });
+        }
+
+        @Override
+        public boolean isAuthenticated() {
+            return withFallback(active::isAuthenticated);
+        }
+
+        @Override
+        public boolean isDonor() {
+            return withFallback(active::isDonor);
+        }
+
+        @Override
+        public boolean requireDonor() {
+            return withFallback(active::requireDonor);
+        }
+
+        @Override
+        public String getAuthId() {
+            return withFallback(active::getAuthId);
+        }
+
+        @Override
+        public Boolean checkPluginJarSignature(JarFile jarFile) throws IOException {
+            return withFallbackIo(() -> active.checkPluginJarSignature(jarFile));
+        }
+
+        @FunctionalInterface
+        private interface AuthSupplier<T> {
+            T get();
+        }
+
+        @FunctionalInterface
+        private interface AuthIoSupplier<T> {
+            T get() throws IOException;
+        }
+    }
 
 }
