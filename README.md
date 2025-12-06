@@ -34,3 +34,38 @@ If neither is set, DarkBOT will load `lib/verifier.jar` from the working directo
      - Añadiendo en los parámetros de inicio: `-Ddarkbot.verifier.path=C:/ruta/completa/verifier.jar` (o la ruta en Linux/Mac).
      - O definiendo la variable de entorno `DARKBOT_VERIFIER_PATH` con esa ruta antes de abrir el bot.
   3. Si no haces nada de lo anterior, el bot seguirá usando el `lib/verifier.jar` que viene por defecto.
+
+### Crear tu propio `verifier.jar`
+
+Si quieres un verificador que no dependa del Discord oficial (o que use tu propio servidor), necesitas compilar un JAR con una clase concreta:
+
+1. **Implementa la interfaz esperada:** crea una clase `eu.darkbot.verifier.AuthAPIImpl` que implemente `eu.darkbot.api.managers.AuthAPI`. Esa clase debe tener los métodos `setupAuth()`, `isAuthenticated()`, `isDonor()`, `requireDonor()`, `getAuthId()` y `checkPluginJarSignature(...)`.
+2. **Ejemplo mínimo (sin Discord):**
+   ```java
+   package eu.darkbot.verifier;
+
+   import eu.darkbot.api.managers.AuthAPI;
+   import java.io.IOException;
+   import java.util.jar.JarFile;
+
+   public class AuthAPIImpl implements AuthAPI {
+       @Override public void setupAuth() {} // Nada que preparar
+       @Override public boolean isAuthenticated() { return true; }
+       @Override public boolean isDonor() { return true; }
+       @Override public boolean requireDonor() { return true; }
+       @Override public String getAuthId() { return "offline-user"; }
+       @Override public Boolean checkPluginJarSignature(JarFile jar) throws IOException { return null; }
+   }
+   ```
+   Compila este archivo con Java 8+ y empaquétalo en un JAR llamado `verifier.jar` (el nombre importa para que coincida con la ruta habitual).
+3. **Cómo compilar rápido sin Gradle/Maven:**
+   - Guarda el archivo anterior en `src/eu/darkbot/verifier/AuthAPIImpl.java` dentro de una carpeta vacía.
+   - Abre una terminal en esa carpeta y ejecuta:
+     ```bash
+     javac -cp "ruta/a/DarkBot.jar" -d out src/eu/darkbot/verifier/AuthAPIImpl.java
+     jar cfe verifier.jar eu.darkbot.verifier.AuthAPIImpl -C out .
+     ```
+     (Sustituye `ruta/a/DarkBot.jar` por la ruta real si necesitas acceder a las interfaces en tiempo de compilación).
+4. **Dile a DarkBOT que use tu JAR:** inicia el bot con `-Ddarkbot.verifier.path=/ruta/completa/verifier.jar` o con la variable `DARKBOT_VERIFIER_PATH` apuntando a ese archivo. Si no pones nada, seguirá cargando `lib/verifier.jar` como siempre.
+
+Con esto tendrás un verificador básico (o el punto de partida para integrar tu propio sistema) sin depender del Discord oficial.
