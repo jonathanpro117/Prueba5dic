@@ -9,6 +9,22 @@ How to run:
   - Main class: com.github.manolo8.darkbot.Bot
   - Working directory: wherever you unzipped the release
 
+## Cómo obtener el ejecutable `DarkBot.jar`
+
+Si quieres el JAR ejecutable generado desde el código fuente (en vez de descargarlo desde Discord), sigue estos pasos:
+
+1. Instala JDK 11 o superior.
+2. En una terminal, sitúate en la carpeta del proyecto y ejecuta:
+   ```bash
+   ./gradlew shadowJar proguard
+   ```
+   (En Windows usa `gradlew.bat shadowJar proguard`.)
+3. Al terminar, encontrarás el archivo ejecutable en `build/DarkBot.jar`.
+   - `shadowJar` empaqueta todas las dependencias en un único JAR.
+   - `proguard` aplica la configuración del proyecto y produce el `DarkBot.jar` final en la carpeta `build`.
+
+Con ese archivo (`build/DarkBot.jar`) ya puedes ejecutar el bot con tu JDK/Java Runtime habitual.
+
 Distribution & support for the bot can be found over at discord: https://discord.gg/bEFgxCy
 
 Everyone is allowed to make, publish & redistribute videos & content about the software.
