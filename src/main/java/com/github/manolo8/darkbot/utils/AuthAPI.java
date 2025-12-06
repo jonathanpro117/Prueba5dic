@@ -156,65 +156,67 @@ public interface AuthAPI extends eu.darkbot.api.managers.AuthAPI {
             }
         }
 
-        private <T> T withFallback(AuthSupplier<T> supplier) {
+        private <T> T withFallback(AuthFunction<T> supplier) {
+            AuthAPI current = active;
             try {
-                return supplier.get();
+                return supplier.get(current);
             } catch (SecurityException e) {
-                fallback(e);
-                return supplier.get();
+                AuthAPI fallback = fallback(e);
+                return supplier.get(fallback);
             }
         }
 
-        private <T> T withFallbackIo(AuthIoSupplier<T> supplier) throws IOException {
+        private <T> T withFallbackIo(AuthIoFunction<T> supplier) throws IOException {
+            AuthAPI current = active;
             try {
-                return supplier.get();
+                return supplier.get(current);
             } catch (SecurityException e) {
-                fallback(e);
-                return supplier.get();
+                AuthAPI fallback = fallback(e);
+                return supplier.get(fallback);
             }
         }
 
         @Override
         public void setupAuth() {
-            withFallback(() -> {
-                active.setupAuth();
+            withFallback(api -> {
+                api.setupAuth();
                 return null;
             });
         }
 
         @Override
         public boolean isAuthenticated() {
-            return withFallback(active::isAuthenticated);
+            return withFallback(AuthAPI::isAuthenticated);
         }
 
         @Override
         public boolean isDonor() {
-            return withFallback(active::isDonor);
+            return withFallback(AuthAPI::isDonor);
         }
 
         @Override
         public boolean requireDonor() {
-            return withFallback(active::requireDonor);
+            return withFallback(AuthAPI::requireDonor);
         }
 
         @Override
         public String getAuthId() {
-            return withFallback(active::getAuthId);
+            return withFallback(AuthAPI::getAuthId);
         }
 
         @Override
         public Boolean checkPluginJarSignature(JarFile jarFile) throws IOException {
-            return withFallbackIo(() -> active.checkPluginJarSignature(jarFile));
+            return withFallbackIo(api -> api.checkPluginJarSignature(jarFile));
         }
 
         @FunctionalInterface
-        private interface AuthSupplier<T> {
-            T get();
+        private interface AuthFunction<T> {
+            T get(AuthAPI api);
         }
 
         @FunctionalInterface
-        private interface AuthIoSupplier<T> {
-            T get() throws IOException;
+        private interface AuthIoFunction<T> {
+            T get(AuthAPI api) throws IOException;
         }
     }
 
