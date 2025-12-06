@@ -40,6 +40,11 @@ If you need to point DarkBOT to a different `verifier.jar` (for example, one bui
 
 If neither is set, DarkBOT will load `lib/verifier.jar` from the working directory as before.
 
+If you already have a `verifier.jar` in place but want to bypass it and force the built-in verifier (for example, to avoid plugin signature errors on unsigned builds), start DarkBOT with:
+
+- JVM property: `-Ddarkbot.verifier.mode=builtin`
+- Environment variable: `DARKBOT_VERIFIER_MODE=builtin`
+
 ### Verificador integrado (sin Discord)
 
 Si el archivo `verifier.jar` no está presente (o no defines ninguna ruta personalizada), el bot usará ahora un verificador integrado:

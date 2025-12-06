@@ -18,6 +18,11 @@ public interface AuthAPI extends eu.darkbot.api.managers.AuthAPI {
     }
 
     static AuthAPI createInstance() {
+        if (shouldForceBuiltIn()) {
+            System.err.println("[AuthAPI] Using built-in verifier as requested via darkbot.verifier.mode=DARKBOT_VERIFIER_MODE");
+            return new eu.darkbot.verifier.AuthAPIImpl();
+        }
+
         Path verifierPath = getVerifierPath();
         if (Files.exists(verifierPath)) return ReflectionUtils.createInstance("eu.darkbot.verifier.AuthAPIImpl", verifierPath);
 
@@ -36,6 +41,21 @@ public interface AuthAPI extends eu.darkbot.api.managers.AuthAPI {
 
         if (override == null || override.isBlank()) return DEFAULT_VERIFIER_PATH;
         return Paths.get(override);
+    }
+
+    /**
+     * Allows users to bypass any bundled verifier.jar and use the built-in verifier.
+     *
+     * Mode can be set to "builtin" via:
+     * <ul>
+     *     <li>System property {@code -Ddarkbot.verifier.mode=builtin}</li>
+     *     <li>Environment variable {@code DARKBOT_VERIFIER_MODE=builtin}</li>
+     * </ul>
+     */
+    static boolean shouldForceBuiltIn() {
+        String mode = System.getProperty("darkbot.verifier.mode");
+        if (mode == null || mode.isBlank()) mode = System.getenv("DARKBOT_VERIFIER_MODE");
+        return mode != null && mode.equalsIgnoreCase("builtin");
     }
 
     /**
