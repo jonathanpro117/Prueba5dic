@@ -24,6 +24,16 @@ If you need to point DarkBOT to a different `verifier.jar` (for example, one bui
 
 If neither is set, DarkBOT will load `lib/verifier.jar` from the working directory as before.
 
+### Verificador integrado (sin Discord)
+
+Si el archivo `verifier.jar` no está presente (o no defines ninguna ruta personalizada), el bot usará ahora un verificador integrado:
+
+- No consulta servidores externos ni Discord.
+- Genera un identificador único en `data/auth.id` la primera vez que se ejecuta y lo reutiliza.
+- Permite la carga de plugins sin comprobar firmas externas.
+
+Esto sirve como modo “offline” básico para pruebas locales o usos sin Discord.
+
 ### Explicación rápida (sin saber programar)
 
 - **¿Qué es el `verifier.jar`?** Es un archivo que comprueba quién puede usar el bot (por ejemplo, si pertenece a tu servidor de Discord).
